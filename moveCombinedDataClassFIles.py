@@ -30,7 +30,7 @@ def filter_and_move_files(source_folder, target_folder, class_name):
                     base_name = filename.replace('.txt', '')
                     
                     # Define paths for the image and text files
-                    img_file = f"{base_name}.png"
+                    img_file = f"{base_name}.jpg"
                     txt_file = f"{base_name}.txt"
                     
                     # Define source paths
@@ -47,7 +47,7 @@ def filter_and_move_files(source_folder, target_folder, class_name):
                     print(f"Moved: {img_file} and {txt_file}")
 
 # Example usage
-source_folder = 'path/to/your/dataset'
-target_folder = 'path/to/your/dataset/test'
+source_folder = '/Users/sandy/Documents/IUB_Grad_School/Hackathon/archive/combined_dataset'
+target_folder = '/Users/sandy/Documents/IUB_Grad_School/Hackathon/Test'
 class_name = 'combined_dataset'
 filter_and_move_files(source_folder, target_folder, class_name)
