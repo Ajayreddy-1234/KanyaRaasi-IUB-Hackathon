@@ -7,30 +7,31 @@ from sklearn.model_selection import train_test_split
 # Data Preprocessing
 # Example of class name to index mapping
 class_name_to_index = {
-    "class1": 0,
-    "class2": 1,
-    "class3": 2,
-    "class4": 3,
-    "class5": 4,
-    "class6": 5,
-    "class7": 6,
-    "class8": 7,
-    "class9": 8,
-    "class10": 9
+    "battery": 0,
+    "biological": 1,
+    "cardboard": 2,
+    "clothes": 3,
+    "glass": 4,
+    "metal": 5,
+    "paper": 6,
+    "plastic": 7,
+    "shoes": 8,
+    "trash": 9
 }
 
 
 class YOLODataset(Dataset):
-    def __init__(self, folder_path, img_size=416, class_name_to_index=None):
+    def __init__(self, folder_path, img_size=416,num_classes = 10, class_name_to_index=None):
         super(YOLODataset, self).__init__()
         self.data = []
+        self.num_classes = num_classes
         self.img_size = img_size
 
         # Load data
         for filename in os.listdir(folder_path):
-            if filename.endswith(".png"):
+            if filename.endswith(".jpg"):
                 img_path = os.path.join(folder_path, filename)
-                label_path = img_path.replace('.png', '.txt')
+                label_path = img_path.replace('.jpg', '.txt')
 
                 # Read and resize image
                 img = cv2.imread(img_path)
@@ -63,7 +64,7 @@ class YOLODataset(Dataset):
         return self.data[idx]
 
 # Usage
-folder_path = 'path/to/your/dataset'
+folder_path = '../dataset/combined_dataset'
 dataset = YOLODataset(folder_path, 416, 10, class_name_to_index)
 train_dataset, val_dataset = train_test_split(dataset, test_size=0.2, random_state=42)
 train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
