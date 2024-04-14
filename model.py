@@ -164,3 +164,83 @@ except Exception as e:
 
 # Save the model
 torch.save(model.state_dict(), 'model.pth')
+
+test_dataset = CustomDataset(root='../dataset/test', transforms=get_transform(), class_to_idx=class_to_idx)
+test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, collate_fn=collate_fn)
+
+model = get_model(num_classes=len(class_to_idx) + 1)  # Include background as a class
+model.load_state_dict(torch.load('model.pth'))
+model.eval()
+model.to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
+
+from collections import defaultdict
+
+def calculate_metrics(target_boxes, target_labels, pred_boxes, pred_labels, pred_scores, iou_threshold=0.5):
+    """
+    Calculate metrics such as IoU, precision, and recall for each class.
+    """
+    metrics = defaultdict(list)
+    for i, label in enumerate(pred_labels):
+        # Calculate IoU for each predicted box
+        iou = calculate_iou(target_boxes, pred_boxes[i].unsqueeze(0))
+
+        # Determine if the prediction is correct based on IoU and class
+        correct = iou >= iou_threshold and label == target_labels[iou.argmax()]
+        metrics[label.item()].append((iou.max().item(), correct))
+
+    return metrics
+
+def calculate_iou(target_boxes, pred_boxes):
+    """
+    Calculate intersection over union (IoU) between target boxes and predicted boxes.
+    """
+    inter_xmin = torch.max(target_boxes[:, 0], pred_boxes[:, 0])
+    inter_ymin = torch.max(target_boxes[:, 1], pred_boxes[:, 1])
+    inter_xmax = torch.min(target_boxes[:, 2], pred_boxes[:, 2])
+    inter_ymax = torch.min(target_boxes[:, 3], pred_boxes[:, 3])
+
+    inter_area = torch.clamp(inter_xmax - inter_xmin, min=0) * torch.clamp(inter_ymax - inter_ymin, min=0)
+    target_area = (target_boxes[:, 2] - target_boxes[:, 0]) * (target_boxes[:, 3] - target_boxes[:, 1])
+    pred_area = (pred_boxes[:, 2] - pred_boxes[:, 0]) * (pred_boxes[:, 3] - pred_boxes[:, 1])
+    union_area = target_area + pred_area - inter_area
+
+    return inter_area / union_area
+
+def evaluate(model, data_loader, device):
+    model.eval()
+    all_metrics = defaultdict(list)
+
+    for images, targets in data_loader:
+        images = list(img.to(device) for img in images)
+        outputs = model(images)
+
+        for i, output in enumerate(outputs):
+            pred_boxes = output['boxes'].data
+            pred_labels = output['labels'].data
+            pred_scores = output['scores'].data
+
+            target_boxes = targets[i]['boxes'].to(device)
+            target_labels = targets[i]['labels'].to(device)
+
+            # Filter out predictions with low confidence
+            mask = pred_scores >= 0.5  # Confidence threshold
+            pred_boxes = pred_boxes[mask]
+            pred_labels = pred_labels[mask]
+            pred_scores = pred_scores[mask]
+
+            # Calculate metrics
+            metrics = calculate_metrics(target_boxes, target_labels, pred_boxes, pred_labels, pred_scores)
+            for key, val in metrics.items():
+                all_metrics[key].extend(val)
+
+    # Calculate and print average IoU and class accuracy
+    for class_id, data in all_metrics.items():
+        ious = [x[0] for x in data]
+        correct_predictions = [x[1] for x in data]
+        avg_iou = sum(ious) / len(ious) if ious else 0
+        accuracy = sum(correct_predictions) / len(correct_predictions) if correct_predictions else 0
+        print(f'Class {class_id}: Average IoU: {avg_iou:.4f}, Accuracy: {accuracy:.4f}')
+
+# Assuming model and test_loader have been initialized
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+evaluate(model, test_loader, device)
