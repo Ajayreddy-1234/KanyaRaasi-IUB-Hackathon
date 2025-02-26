@@ -47,6 +47,7 @@ def filter_and_move_files(source_folder, target_folder, class_name):
                     print(f"Moved: {img_file} and {txt_file}")
 
 # Example usage
+
 source_folder = '../dataset/combined_dataset'
 target_folder = '../dataset/test'
 class_name = 'combined_dataset'
